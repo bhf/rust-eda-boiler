@@ -22,11 +22,13 @@ impl OMSService for OmsHandler {
 
         if !Order::is_valid_instrument(order.instrument_id()) {
             self.error.set_error_code(OMSError::InvalidInstrument);
+            self.error.set_id(order.id());
             return Err(&self.error)
         }
 
         if !Order::is_valid_amount(order.instrument_id()) {
             self.error.set_error_code(OMSError::InvalidAmount);
+            self.error.set_id(order.id());
             return Err(&self.error)
         }
 
