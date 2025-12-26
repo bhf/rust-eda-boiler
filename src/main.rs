@@ -45,7 +45,10 @@ fn main() {
     let builder = build_single_producer(1 << 8, event_factory, BusySpin);
     let rb = builder.handle_events_with(event_handler).build();
 
-    log::info!("Initialised ringbuffer, will now publish messages. Use Aeron: {}", use_aeron);
+    log::info!(
+        "Initialised ringbuffer, will now publish messages. Use Aeron: {}",
+        use_aeron
+    );
 
     if use_aeron {
         subscribe_to_aeron(rb);
@@ -57,7 +60,7 @@ fn main() {
 ///
 /// Subscribe to an Aeron subscription and publish
 /// messages to the Ringbuffer to be processed by the OMS Handler.
-/// 
+///
 fn subscribe_to_aeron(rb: SingleProducer<Order, SingleConsumerBarrier>) {
     log::info!("Subscribing to Aeron stream");
 }
@@ -74,12 +77,13 @@ fn publish_messages(mut rb: SingleProducer<Order, SingleConsumerBarrier>) {
                 count += 1;
 
                 rb.publish(|e| {
-                    e.set_id(count);
-                    e.set_amount(count * 2);
-                    e.set_instrument_id(count + 1);
+                    let id = count;
+                    let amount = count * 2;
+                    let instrument_id = if id % 2 == 0 { 0 } else { id + 1 };
+                    e.populate(id, amount, instrument_id);
                 });
 
-                log::info!("Total events published: {}", count);
+                log::info!("Total events published to ringbuffer: {}", count);
                 sleep(Duration::from_secs(1));
             }
         });
