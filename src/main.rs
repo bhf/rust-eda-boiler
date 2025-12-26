@@ -23,7 +23,7 @@ fn main() {
         .and_then(|v| v.parse::<bool>().ok())
         .unwrap_or(false);
 
-    log::info!("Starting up OMS");
+    log::info!("Starting up Application");
 
     let order_repository = Box::new(InMemoryOrderRepository::new());
     let oms_error = OmsHandlerError::new(1);
