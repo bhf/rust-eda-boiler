@@ -24,7 +24,7 @@ RUN apt-get update && \
 FROM debian:bookworm-slim
 
 WORKDIR /app
-COPY --from=builder /app/target/release/oms /app/app
+COPY --from=builder /app/target/release/RustEDABoiler /app/app
 
 ENV RUST_LOG=info
 CMD ["./app"]
