@@ -15,6 +15,11 @@ mod services;
 fn main() {
     env_logger::init();
 
+    let use_aeron = std::env::var("USE_AERON")
+        .ok()
+        .and_then(|v| v.parse::<bool>().ok())
+        .unwrap_or(false);
+
     log::info!("Starting up OMS");
 
     let order_repository = Box::new(InMemoryOrderRepository::new());
@@ -37,12 +42,23 @@ fn main() {
         }
     };
 
-    let builder = build_single_producer(1<<8, event_factory, BusySpin);
+    let builder = build_single_producer(1 << 8, event_factory, BusySpin);
     let rb = builder.handle_events_with(event_handler).build();
 
-    log::info!("Initialised ringbuffer, will now publish messages");
+    log::info!("Initialised ringbuffer, will now publish messages. Use Aeron: {}", use_aeron);
 
-    publish_messages(rb);
+    if use_aeron {
+        subscribe_to_aeron(rb);
+    } else {
+        publish_messages(rb);
+    }
+}
+
+///
+/// Subscribe to an Aeron subscription and publish
+/// messages to the Ringbuffer to be processed by the OMS Handler.
+fn subscribe_to_aeron(rb: SingleProducer<Order, SingleConsumerBarrier>) {
+    log::info!("Subscribing to Aeron stream");
 }
 
 ///
@@ -68,4 +84,3 @@ fn publish_messages(mut rb: SingleProducer<Order, SingleConsumerBarrier>) {
         });
     });
 }
-

@@ -27,6 +27,13 @@ export RUST_LOG=info
 ./oms
 ```
 
+### Docker
+
+```
+docker build -t rust-oms-app .
+docker run --env USE_AERON=false rust-oms-app
+```
+
 ### Sample Output
 
 ```bash
