@@ -1,9 +1,9 @@
-// tests/integration_test.rs
-use playground::services::oms::OMSService;
-use playground::model::order::Order;
-use playground::repositories::order_repo::in_memory_order_repository::InMemoryOrderRepository;
-use playground::services::oms_service::oms_handler::OmsHandler;
-use playground::services::oms_service::oms_handler_error::OmsHandlerError;
+// tests/oms_service_integration_test
+use oms::services::oms::OMSService;
+use oms::model::order::Order;
+use oms::repositories::order_repo::in_memory_order_repository::InMemoryOrderRepository;
+use oms::services::oms_service::oms_handler::OmsHandler;
+use oms::services::oms_service::oms_handler_error::OmsHandlerError;
 
 #[test]
 fn test_process_order() {
