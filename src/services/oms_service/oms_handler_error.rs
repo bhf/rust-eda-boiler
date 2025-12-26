@@ -9,6 +9,22 @@ impl OmsHandlerError {
     pub fn new(id: u64) -> OmsHandlerError {
         Self{id, error_code: OMSError::None}
     }
+
+    pub fn id(&self) -> u64 {
+        self.id
+    }
+
+    pub fn error_code(&self) -> &OMSError {
+        &self.error_code
+    }
+
+    pub fn set_id(&mut self, id: u64) {
+        self.id = id;
+    }
+
+    pub fn set_error_code(&mut self, error_code: OMSError) {
+        self.error_code = error_code;
+    }
 }
 
 impl fmt::Display for OmsHandlerError {

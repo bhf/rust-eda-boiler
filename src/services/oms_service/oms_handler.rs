@@ -1,26 +1,27 @@
 use crate::model::order::Order;
 use crate::services::oms::OMSService;
-use crate::services::oms_service::oms_handler_error::OmsHandlerError;
+use crate::services::oms_service::oms_handler_error::{OMSError, OmsHandlerError};
 use crate::services::validation::OrderValidationService;
 use crate::repositories::order_repository::OrderRepository;
 
 
-pub struct OmsHandler<'a>{
+pub struct OmsHandler{
     pub error: OmsHandlerError,
-    pub order_repo: &'a mut dyn OrderRepository,
+    pub order_repo: Box<dyn OrderRepository>,
 }
 
-impl<'a> OmsHandler<'a> {
-    pub fn new(error: OmsHandlerError, order_repo: &'a mut dyn OrderRepository) -> Self {
+impl OmsHandler {
+    pub fn new(error: OmsHandlerError, order_repo: Box<dyn OrderRepository>) -> Self {
         Self { error, order_repo }
     }
 }
 
-impl OMSService for OmsHandler<'_> {
+impl OMSService for OmsHandler {
 
     fn process_order(&mut self, order: Order) -> Result<(), &OmsHandlerError> {
 
         if !Order::is_valid_instrument(order.instrument_id()) {
+            self.error.set_error_code(OMSError::InvalidParams);
             return Err(&self.error)
         }
 
