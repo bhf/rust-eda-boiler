@@ -46,7 +46,7 @@ fn main() {
 }
 
 ///
-/// Publish messages onto the Ringbuffer
+/// Publish messages onto the Ringbuffer.
 ///
 fn publish_messages(mut rb: SingleProducer<Order, SingleConsumerBarrier>) {
     thread::scope(|s| {
