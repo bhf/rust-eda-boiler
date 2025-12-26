@@ -8,11 +8,11 @@ A boiler for event driven services in Rust using a DDD inspired structure with s
 
 * SPSC Ringbuffer using [Disruptor-rs](https://github.com/nicholassm/disruptor-rs)
 * Aeron subscriptions using [Rusteron](https://github.com/gsrxyz/rusteron/tree/main)
-* Repository pattern
-* Logging with env_logger
+* Repository pattern (on heap ```Box<>```)
+* Logging with ```env_logger```
 * Unit tests
-* Integration tests
-* Dockerfile
+* Integration tests (in ```tests/```)
+* ```Dockerfile```
 
 ## How To Run
 
