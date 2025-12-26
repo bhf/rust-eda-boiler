@@ -37,7 +37,7 @@ fn main() {
         }
     };
 
-    let builder = disruptor::build_single_producer(1<<8, event_factory, BusySpin);
+    let builder = build_single_producer(1<<8, event_factory, BusySpin);
     let rb = builder.handle_events_with(event_handler).build();
 
     log::info!("Initialised ringbuffer, will now publish messages");
