@@ -2,17 +2,19 @@
 
 ![img.png](docs/img.png)
 
-A boiler for event driven services in Rust using a DDD inspired structure with submodules.
+A boiler for event driven services in Rust using a DDD inspired structure with submodules. 
+Please note that any domain logic included is just as a "toy" example and this project is not
+associated with my work at [Adaptive Financial Consulting](https://weareadaptive.com/).
 
 ### Features
 
 * SPSC Ringbuffer using [Disruptor-rs](https://github.com/nicholassm/disruptor-rs)
 * Aeron subscriptions using [Rusteron](https://github.com/gsrxyz/rusteron/tree/main)
-* Repository pattern (on heap ```Box<>```)
+* Repository pattern (on heap, ```Box<>```)
 * Logging with ```env_logger```
-* Unit tests
+* Unit tests (inline)
 * Integration tests (in ```tests/```)
-* ```Dockerfile```
+* ```Dockerfile``` with CMake 4.2.1 install from source code
 
 ## How To Run
 
@@ -40,7 +42,7 @@ docker run --env USE_AERON=false rust-oms-app
 
 ### Sample Output
 
-Error logging is expected based on the modulo of the Id.
+Logging at ERROR is expected based on the modulo of the Id.
 
 ```bash
 [2025-12-26T10:28:14Z INFO  oms] Starting up OMS
