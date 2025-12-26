@@ -34,7 +34,8 @@ impl fmt::Display for OmsHandlerError {
 }
 
 pub enum OMSError{
-    InvalidParams,
+    InvalidInstrument,
+    InvalidAmount,
     InvalidAccount,
     NotConnected,
     None
@@ -43,7 +44,8 @@ pub enum OMSError{
 impl fmt::Display for OMSError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let msg = match self {
-            OMSError::InvalidParams => "Invalid parameters",
+            OMSError::InvalidInstrument => "Invalid parameters",
+            OMSError::InvalidAmount => "Invalid amount",
             OMSError::InvalidAccount => "Invalid account",
             OMSError::NotConnected => "Not connected",
             OMSError::None => "No error",

@@ -21,7 +21,12 @@ impl OMSService for OmsHandler {
     fn process_order(&mut self, order: Order) -> Result<(), &OmsHandlerError> {
 
         if !Order::is_valid_instrument(order.instrument_id()) {
-            self.error.set_error_code(OMSError::InvalidParams);
+            self.error.set_error_code(OMSError::InvalidInstrument);
+            return Err(&self.error)
+        }
+
+        if !Order::is_valid_amount(order.instrument_id()) {
+            self.error.set_error_code(OMSError::InvalidAmount);
             return Err(&self.error)
         }
 

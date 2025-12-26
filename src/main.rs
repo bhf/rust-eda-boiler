@@ -57,6 +57,7 @@ fn main() {
 ///
 /// Subscribe to an Aeron subscription and publish
 /// messages to the Ringbuffer to be processed by the OMS Handler.
+/// 
 fn subscribe_to_aeron(rb: SingleProducer<Order, SingleConsumerBarrier>) {
     log::info!("Subscribing to Aeron stream");
 }
