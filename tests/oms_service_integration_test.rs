@@ -1,8 +1,8 @@
-use oms::services::oms::OMSService;
-use oms::model::order::Order;
-use oms::repositories::order_repo::in_memory_order_repository::InMemoryOrderRepository;
-use oms::services::oms_service::oms_handler::OmsHandler;
-use oms::services::oms_service::oms_handler_error::OmsHandlerError;
+use RustEDABoiler::services::oms::OMSService;
+use RustEDABoiler::model::order::Order;
+use RustEDABoiler::repositories::order_repo::in_memory_order_repository::InMemoryOrderRepository;
+use RustEDABoiler::services::oms_service::oms_handler::OmsHandler;
+use RustEDABoiler::services::oms_service::oms_handler_error::OmsHandlerError;
 
 #[test]
 fn test_process_order() {
