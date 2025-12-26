@@ -1,4 +1,3 @@
-// tests/oms_service_integration_test
 use oms::services::oms::OMSService;
 use oms::model::order::Order;
 use oms::repositories::order_repo::in_memory_order_repository::InMemoryOrderRepository;
