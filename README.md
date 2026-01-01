@@ -12,7 +12,7 @@ Please note that any domain logic included is just as a "toy" example.
 * Logging with ```env_logger```
 * Unit tests (inline)
 * Integration tests (in ```tests/```)
-* ```Dockerfile``` with CMake 4.2.1 install from source code
+* ```Dockerfile```
 
 ## How To Run
 
