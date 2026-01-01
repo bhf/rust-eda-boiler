@@ -59,7 +59,7 @@ fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
         let order = Order::new(e.id(), e.amount(), e.instrument_id());
 
         match oms_handler.process_order(order) {
-            Ok(value) => {
+            Ok(_value) => {
                 log::info!("Processed order: {}", e.id());
             }
             Err(error) => {
@@ -95,15 +95,14 @@ fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
 
     // Handler for processing received fragments
     // Explicitly annotate types so the compiler can find .get_bytes() and .session_id()
-    let mut fragment_handler = |buffer: &AtomicBuffer, offset: Index, mut length: Index, header: &Header| {
+    let mut fragment_handler = |buffer: &AtomicBuffer, offset: Index, _length: Index, header: &Header| {
 
         rb.publish(|e| {
-            let data = buffer.get_bytes(offset, &mut length);
-            let count = buffer.get::<u64>(offset);
+            let _count = buffer.get::<u64>(offset);
             let id = buffer.get::<u64>(offset + 8);
             let amount = buffer.get::<u64>(offset + 16);
             let instrument_id = buffer.get::<u64>(offset + 24);
-            log::debug!("Decoded data, ID={}, Amount={}, Instrument={}", id, amount, instrument_id);
+            log::debug!("Decoded data on session {}, ID={}, Amount={}, Instrument={}", header.session_id(), id, amount, instrument_id);
             e.populate(id, amount, instrument_id);
         });
     };
@@ -132,7 +131,7 @@ fn publish_messages(mut oms_handler: OmsHandler) {
         let order = Order::new(e.id(), e.amount(), e.instrument_id());
 
         match oms_handler.process_order(order) {
-            Ok(value) => {
+            Ok(_value) => {
                 log::info!("Processed order: {}", e.id());
             }
             Err(error) => {
