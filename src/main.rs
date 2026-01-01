@@ -1,26 +1,29 @@
-use std::ffi::CString;
 use crate::model::order::Order;
 use crate::repositories::order_repo::in_memory_order_repository::InMemoryOrderRepository;
 use crate::services::oms::OMSService;
 use crate::services::oms_service::oms_handler::OmsHandler;
 use crate::services::oms_service::oms_handler_error::OmsHandlerError;
+use aeron_rs::aeron::Aeron;
+use aeron_rs::concurrent::atomic_buffer::AtomicBuffer;
+use aeron_rs::concurrent::logbuffer::header::Header;
+use aeron_rs::context::Context;
+use aeron_rs::utils::types::Index;
 use disruptor::*;
+use std::ffi::CString;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use aeron_rs::aeron::Aeron;
-use aeron_rs::context::Context;
-use aeron_rs::utils::types::Index;
-use aeron_rs::concurrent::atomic_buffer::AtomicBuffer;
-use aeron_rs::concurrent::logbuffer::header::Header;
-
 
 mod model;
 mod repositories;
 mod services;
 
+///
+/// Main entry point for the application.
+/// Initializes the logger, sets up the OMS handler, and starts either the Aeron subscriber or the message publisher based on configuration.
+///
 fn main() {
     env_logger::init();
 
@@ -28,7 +31,6 @@ fn main() {
         .ok()
         .and_then(|v| v.parse::<bool>().ok())
         .unwrap_or(true);
-
 
     log::info!("Starting up Application");
 
@@ -46,6 +48,11 @@ fn main() {
 ///
 /// Subscribe to an Aeron subscription and publish
 /// messages to the Ringbuffer to be processed by the OMS Handler.
+///
+/// # Arguments
+///
+/// * `subscription_channel` - The Aeron channel to subscribe to (e.g., "aeron:ipc").
+/// * `stream_id` - The stream ID to listen on.
 ///
 fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
     let order_repository = Box::new(InMemoryOrderRepository::new());
@@ -80,10 +87,17 @@ fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
     // Add a subscription
     // We clone the channel because add_subscription consumes the CString
     let subscription_id = aeron
-        .add_subscription(CString::new(subscription_channel.clone()).unwrap(), stream_id)
+        .add_subscription(
+            CString::new(subscription_channel.clone()).unwrap(),
+            stream_id,
+        )
         .expect("Failed to add subscription");
 
-    log::info!("Subscription added to channel: {:?} stream: {}", subscription_channel, stream_id);
+    log::info!(
+        "Subscription added to channel: {:?} stream: {}",
+        subscription_channel,
+        stream_id
+    );
 
     // Find the subscription object
     let subscription = loop {
@@ -95,17 +109,23 @@ fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
 
     // Handler for processing received fragments
     // Explicitly annotate types so the compiler can find .get_bytes() and .session_id()
-    let mut fragment_handler = |buffer: &AtomicBuffer, offset: Index, _length: Index, header: &Header| {
-
-        rb.publish(|e| {
-            let _count = buffer.get::<u64>(offset);
-            let id = buffer.get::<u64>(offset + 8);
-            let amount = buffer.get::<u64>(offset + 16);
-            let instrument_id = buffer.get::<u64>(offset + 24);
-            log::debug!("Decoded data on session {}, ID={}, Amount={}, Instrument={}", header.session_id(), id, amount, instrument_id);
-            e.populate(id, amount, instrument_id);
-        });
-    };
+    let mut fragment_handler =
+        |buffer: &AtomicBuffer, offset: Index, _length: Index, header: &Header| {
+            rb.publish(|e| {
+                let _count = buffer.get::<u64>(offset);
+                let id = buffer.get::<u64>(offset + 8);
+                let amount = buffer.get::<u64>(offset + 16);
+                let instrument_id = buffer.get::<u64>(offset + 24);
+                log::debug!(
+                    "Decoded data on session {}, ID={}, Amount={}, Instrument={}",
+                    header.session_id(),
+                    id,
+                    amount,
+                    instrument_id
+                );
+                e.populate(id, amount, instrument_id);
+            });
+        };
 
     // Poll loop
     let running = Arc::new(AtomicBool::new(true));
@@ -116,14 +136,16 @@ fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
             sleep(Duration::from_millis(1));
         }
     }
-
 }
 
 ///
 /// Publish messages onto the Ringbuffer.
 ///
+/// # Arguments
+///
+/// * `oms_handler` - The Order Management System handler that processes orders.
+///
 fn publish_messages(mut oms_handler: OmsHandler) {
-
     let event_factory = || Order::new(0, 0, 0);
 
     let event_handler = move |e: &Order, sequence: Sequence, _end_of_batch: bool| {
