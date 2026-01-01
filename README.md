@@ -3,9 +3,7 @@
 ![img.png](docs/img.png)
 
 A boiler for event driven services in Rust using a DDD inspired structure with submodules. 
-Please note that any domain logic included is just as a "toy" example and this project is not
-associated with my work at [Adaptive Financial Consulting](https://weareadaptive.com/).
-
+Please note that any domain logic included is just as a "toy" example.
 ### Features
 
 * SPSC Ringbuffer using [Disruptor-rs](https://github.com/nicholassm/disruptor-rs)

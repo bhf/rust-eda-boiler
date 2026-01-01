@@ -29,6 +29,9 @@ fn main() {
     let oms_error = OmsHandlerError::new(1);
     let oms_handler = OmsHandler::new(oms_error, order_repository);
 
+    // Start embedded media driver
+    //start_media_driver().unwrap();
+
     if use_aeron {
         subscribe_to_aeron("aeron:ipc".parse().unwrap(), 808);
     } else {
@@ -66,9 +69,6 @@ fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
 
     log::info!("Subscribing to Aeron stream");
 
-    // Start embedded media driver
-    start_media_driver().unwrap();
-
     let aeron_context = AeronContext::new().unwrap();
     let aeron = Aeron::new(&aeron_context).unwrap();
 
@@ -79,6 +79,7 @@ fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
         fn handle_aeron_fragment_handler(&mut self, buffer: &[u8], header: AeronHeader) -> () {
             // Decode from the buffer and publish to the Ringbuffer
             self.rb.publish(|e| {
+                log::debug!("Got data: {:?}", buffer);
                 let count = u64::from_le_bytes(buffer[0..8].try_into().unwrap());
                 let id = u64::from_le_bytes(buffer[8..16].try_into().unwrap());
                 let amount = u64::from_le_bytes(buffer[16..24].try_into().unwrap());
@@ -91,6 +92,8 @@ fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
     let (_assembler, fragment_handler) =
         Handler::leak_with_fragment_assembler(FragmentHandler { rb }).unwrap();
 
+    log::debug!("Subscribing on channel {} and stream {}", subscription_channel, stream_id);
+
     let live_subscription = aeron
         .add_subscription(
             &*subscription_channel.into_c_string(),
@@ -98,16 +101,21 @@ fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
             Handlers::no_available_image_handler(),
             Handlers::no_unavailable_image_handler(),
             Duration::from_millis(100),
-        )
-        .ok();
+        );
 
-    let sub = live_subscription.unwrap();
-
-    thread::scope(|s| {
-        s.spawn(move || loop {
-            let _ = sub.poll(Some(&fragment_handler), 1000);
-        });
-    });
+    match live_subscription {
+        Ok(sub) => {
+            thread::scope(|s| {
+                s.spawn(move || loop {
+                    let _ = sub.poll(Some(&fragment_handler), 1000);
+                });
+            });
+        }
+        Err(e) => {
+            log::error!("Failed to add Aeron subscription: {:?}", e);
+            // Handle the error as needed, e.g., return or exit
+        }
+    }
 }
 
 ///
