@@ -83,14 +83,14 @@ fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
         .add_subscription(CString::new(subscription_channel.clone()).unwrap(), stream_id)
         .expect("Failed to add subscription");
 
-    println!("Subscription added to channel: {:?} stream: {}", subscription_channel, stream_id);
+    log::info!("Subscription added to channel: {:?} stream: {}", subscription_channel, stream_id);
 
     // Find the subscription object
     let subscription = loop {
         if let Ok(sub) = aeron.find_subscription(subscription_id) {
             break sub;
         }
-        thread::sleep(Duration::from_millis(10));
+        sleep(Duration::from_millis(10));
     };
 
     // Handler for processing received fragments
@@ -113,7 +113,7 @@ fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
     while running.load(Ordering::SeqCst) {
         let fragments_read = subscription.lock().unwrap().poll(&mut fragment_handler, 10);
         if fragments_read == 0 {
-            thread::sleep(Duration::from_millis(1));
+            sleep(Duration::from_millis(1));
         }
     }
 
