@@ -7,7 +7,7 @@ Please note that any domain logic included is just as a "toy" example.
 ### Features
 
 * SPSC Ringbuffer using [Disruptor-rs](https://github.com/nicholassm/disruptor-rs)
-* Aeron subscriptions using [Rusteron](https://github.com/gsrxyz/rusteron/tree/main)
+* Aeron subscriptions using [Aeron-rs](https://github.com/UnitedTraders/aeron-rs/)
 * Repository pattern (on heap, ```Box<>```)
 * Logging with ```env_logger```
 * Unit tests (inline)

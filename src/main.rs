@@ -1,15 +1,21 @@
+use std::ffi::CString;
 use crate::model::order::Order;
 use crate::repositories::order_repo::in_memory_order_repository::InMemoryOrderRepository;
 use crate::services::oms::OMSService;
 use crate::services::oms_service::oms_handler::OmsHandler;
 use crate::services::oms_service::oms_handler_error::OmsHandlerError;
 use disruptor::*;
-use rusteron_client::{
-    Aeron, AeronContext, AeronFragmentHandlerCallback, AeronHeader, Handler, Handlers, IntoCString,
-};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use aeron_rs::aeron::Aeron;
+use aeron_rs::context::Context;
+use aeron_rs::utils::types::Index;
+use aeron_rs::concurrent::atomic_buffer::AtomicBuffer;
+use aeron_rs::concurrent::logbuffer::header::Header;
+
 
 mod model;
 mod repositories;
@@ -21,16 +27,14 @@ fn main() {
     let use_aeron = std::env::var("USE_AERON")
         .ok()
         .and_then(|v| v.parse::<bool>().ok())
-        .unwrap_or(false);
+        .unwrap_or(true);
+
 
     log::info!("Starting up Application");
 
     let order_repository = Box::new(InMemoryOrderRepository::new());
     let oms_error = OmsHandlerError::new(1);
     let oms_handler = OmsHandler::new(oms_error, order_repository);
-
-    // Start embedded media driver
-    //start_media_driver().unwrap();
 
     if use_aeron {
         subscribe_to_aeron("aeron:ipc".parse().unwrap(), 808);
@@ -65,75 +69,55 @@ fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
     };
 
     let builder = build_single_producer(1 << 8, event_factory, BusySpin);
-    let rb = builder.handle_events_with(event_handler).build();
+    let mut rb = builder.handle_events_with(event_handler).build();
 
     log::info!("Subscribing to Aeron stream");
 
-    let aeron_context = AeronContext::new().unwrap();
-    let aeron = Aeron::new(&aeron_context).unwrap();
+    // Create a context and connect to the Media Driver
+    let context = Context::new();
+    let mut aeron = Aeron::new(context).expect("Failed to create Aeron instance");
 
-    struct FragmentHandler {
-        rb: SingleProducer<Order, SingleConsumerBarrier>,
-    }
-    impl AeronFragmentHandlerCallback for FragmentHandler {
-        fn handle_aeron_fragment_handler(&mut self, buffer: &[u8], header: AeronHeader) -> () {
-            // Decode from the buffer and publish to the Ringbuffer
-            self.rb.publish(|e| {
-                log::debug!("Got data: {:?}", buffer);
-                let count = u64::from_le_bytes(buffer[0..8].try_into().unwrap());
-                let id = u64::from_le_bytes(buffer[8..16].try_into().unwrap());
-                let amount = u64::from_le_bytes(buffer[16..24].try_into().unwrap());
-                let instrument_id = u64::from_le_bytes(buffer[24..32].try_into().unwrap());
-                e.populate(id, amount, instrument_id);
-            });
+    // Add a subscription
+    // We clone the channel because add_subscription consumes the CString
+    let subscription_id = aeron
+        .add_subscription(CString::new(subscription_channel.clone()).unwrap(), stream_id)
+        .expect("Failed to add subscription");
+
+    println!("Subscription added to channel: {:?} stream: {}", subscription_channel, stream_id);
+
+    // Find the subscription object
+    let subscription = loop {
+        if let Ok(sub) = aeron.find_subscription(subscription_id) {
+            break sub;
+        }
+        thread::sleep(Duration::from_millis(10));
+    };
+
+    // Handler for processing received fragments
+    // Explicitly annotate types so the compiler can find .get_bytes() and .session_id()
+    let mut fragment_handler = |buffer: &AtomicBuffer, offset: Index, mut length: Index, header: &Header| {
+
+        rb.publish(|e| {
+            let data = buffer.get_bytes(offset, &mut length);
+            let count = buffer.get::<u64>(offset);
+            let id = buffer.get::<u64>(offset + 8);
+            let amount = buffer.get::<u64>(offset + 16);
+            let instrument_id = buffer.get::<u64>(offset + 24);
+            log::debug!("Decoded data, ID={}, Amount={}, Instrument={}", id, amount, instrument_id);
+            e.populate(id, amount, instrument_id);
+        });
+    };
+
+    // Poll loop
+    let running = Arc::new(AtomicBool::new(true));
+
+    while running.load(Ordering::SeqCst) {
+        let fragments_read = subscription.lock().unwrap().poll(&mut fragment_handler, 10);
+        if fragments_read == 0 {
+            thread::sleep(Duration::from_millis(1));
         }
     }
 
-    let (_assembler, fragment_handler) =
-        Handler::leak_with_fragment_assembler(FragmentHandler { rb }).unwrap();
-
-    log::debug!("Subscribing on channel {} and stream {}", subscription_channel, stream_id);
-
-    let live_subscription = aeron
-        .add_subscription(
-            &*subscription_channel.into_c_string(),
-            stream_id,
-            Handlers::no_available_image_handler(),
-            Handlers::no_unavailable_image_handler(),
-            Duration::from_millis(100),
-        );
-
-    match live_subscription {
-        Ok(sub) => {
-            thread::scope(|s| {
-                s.spawn(move || loop {
-                    let _ = sub.poll(Some(&fragment_handler), 1000);
-                });
-            });
-        }
-        Err(e) => {
-            log::error!("Failed to add Aeron subscription: {:?}", e);
-            // Handle the error as needed, e.g., return or exit
-        }
-    }
-}
-
-///
-/// Start an embedded media driver.
-///
-pub fn start_media_driver() -> Result<(), Box<dyn std::error::Error>> {
-    let aeron_context = rusteron_media_driver::AeronDriverContext::new()?;
-    let aeron_driver = rusteron_media_driver::AeronDriver::new(&aeron_context)?;
-    aeron_driver.start(true)?;
-    log::info!("Aeron media driver started successfully.");
-
-    aeron_driver.conductor().context().print_configuration();
-    aeron_driver.main_do_work()?;
-    log::info!("aeron dir: {:?}", aeron_context.get_dir());
-
-    loop {
-        aeron_driver.main_idle_strategy(aeron_driver.main_do_work()?);
-    }
 }
 
 ///
