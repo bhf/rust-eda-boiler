@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use crate::model::order::Order;
 use crate::repositories::order_repository::OrderRepository;
+use std::collections::HashMap;
 
 pub struct InMemoryOrderRepository {
     orders: HashMap<u64, Order>,
@@ -8,18 +8,23 @@ pub struct InMemoryOrderRepository {
 
 impl InMemoryOrderRepository {
     pub fn new() -> Self {
-        Self { orders: HashMap::new() }
+        Self {
+            orders: HashMap::new(),
+        }
     }
 }
 
 impl OrderRepository for InMemoryOrderRepository {
-
     fn put(&mut self, order: Order) {
         self.orders.insert(order.id(), order);
     }
 
     fn get(&self, order_id: u64) -> Option<&Order> {
         self.orders.get(&order_id)
+    }
+
+    fn remove(&mut self, order_id: u64) -> Option<Order> {
+        self.orders.remove(&order_id)
     }
 }
 
@@ -55,5 +60,34 @@ mod tests {
 
         let retrieved = repo.get(1).unwrap();
         assert_eq!(retrieved.id(), 1);
+    }
+
+    #[test]
+    fn test_remove_existing_order() {
+        let mut repo = InMemoryOrderRepository::new();
+        let order = Order::new(1, 100, 200);
+        repo.put(order);
+        let removed = repo.remove(1);
+        assert!(removed.is_some());
+        assert_eq!(removed.unwrap().id(), 1);
+        assert!(repo.get(1).is_none());
+    }
+
+    #[test]
+    fn test_remove_nonexistent_order() {
+        let mut repo = InMemoryOrderRepository::new();
+        let removed = repo.remove(999);
+        assert!(removed.is_none());
+    }
+
+    #[test]
+    fn test_remove_twice() {
+        let mut repo = InMemoryOrderRepository::new();
+        let order = Order::new(2, 101, 201);
+        repo.put(order);
+        let first_remove = repo.remove(2);
+        assert!(first_remove.is_some());
+        let second_remove = repo.remove(2);
+        assert!(second_remove.is_none());
     }
 }
