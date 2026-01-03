@@ -30,7 +30,7 @@ fn main() {
     let use_aeron = std::env::var("USE_AERON")
         .ok()
         .and_then(|v| v.parse::<bool>().ok())
-        .unwrap_or(true);
+        .unwrap_or(false);
 
     log::info!("Starting up Application");
 
@@ -39,7 +39,7 @@ fn main() {
     let oms_handler = OmsHandler::new(oms_error, order_repository);
 
     if use_aeron {
-        subscribe_to_aeron("aeron:ipc".parse().unwrap(), 808);
+        subscribe_to_aeron("aeron:ipc".parse().unwrap(), 808, oms_handler);
     } else {
         publish_messages(oms_handler);
     }
@@ -53,11 +53,9 @@ fn main() {
 ///
 /// * `subscription_channel` - The Aeron channel to subscribe to (e.g., "aeron:ipc").
 /// * `stream_id` - The stream ID to listen on.
+/// * `oms_handler` - The handler that processes events.
 ///
-fn subscribe_to_aeron(subscription_channel: String, stream_id: i32) {
-    let order_repository = Box::new(InMemoryOrderRepository::new());
-    let oms_error = OmsHandlerError::new(1);
-    let mut oms_handler = OmsHandler::new(oms_error, order_repository);
+fn subscribe_to_aeron(subscription_channel: String, stream_id: i32, mut oms_handler: OmsHandler) {
 
     let event_factory = || Order::new(0, 0, 0);
 
